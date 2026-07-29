@@ -21,10 +21,10 @@
     --ink:#1F3A3D;
     --ink-soft:#5B7069;
     --line:#DCE3DA;
-    --frei:#3E8E52;
-    --huete:#DD7A0F;
-    --unavailable:#6C4FA0;
-    --vacation:#1789A3;
+    --frei:#41c35b;
+    --huete:#0f1ddb;
+    --unavailable:#6c4fa0;
+    --vacation:#00ff04;
     --school-holiday:#E0A800;
     --weekend-tint:#E07B2E;
     --weekend-bg:color-mix(in srgb, var(--weekend-tint) 30%, white);
@@ -223,7 +223,7 @@
     border:1.5px solid transparent;
     position:relative;
   }
-  .day-card.vacation{background:var(--vacation-bg);}
+  .day-card.vacation{background:var(--vacation-bg);border-color:var(--vacation);border-width:2px;}
   .day-card.weekend{background:var(--weekend-bg);}
   .day-card.huete{background:var(--huete-bg);border-color:var(--huete);border-width:2px;}
   .day-card.unavailable{
@@ -289,7 +289,7 @@
     position:relative;
     overflow:hidden;
   }
-  .cell.vacation{background:var(--vacation-bg);}
+  .cell.vacation{background:var(--vacation-bg);border-color:var(--vacation);border-width:2px;}
   .cell.weekend{background:var(--weekend-bg);}
   .cell.huete{background:var(--huete-bg);border-color:var(--huete);border-width:2px;}
   .cell.unavailable{
@@ -311,14 +311,14 @@
   .cell.today{border-color:var(--today-accent);border-width:3px;}
   .status-badge{
     position:absolute;
-    top:4px;right:5px;
-    font-size:10px;
+    top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    font-size:22px;
     z-index:2;
   }
   .kiga-badge{
     position:absolute;
-    top:50%;left:50%;
-    transform:translate(-50%,-50%);
+    top:4px;right:5px;
     font-size:9px;
     z-index:2;
     opacity:0.8;
@@ -827,12 +827,12 @@ document.getElementById('sheetBackdrop').addEventListener('click', ()=>{
 
 /* ============ Einstellungen ============ */
 const DEFAULT_SETTINGS = {
-  colorA: "#3E6B8A",
-  colorB: "#B15A82",
-  colorHuete: "#DD7A0F",
-  colorFrei: "#3E8E52",
-  colorUnavailable: "#6C4FA0",
-  colorVacation: "#1789A3"
+  colorA: "#3e6b8a",
+  colorB: "#b15a82",
+  colorHuete: "#0f1ddb",
+  colorFrei: "#41c35b",
+  colorUnavailable: "#6c4fa0",
+  colorVacation: "#00ff04"
 };
 let settings = { ...DEFAULT_SETTINGS };
 
