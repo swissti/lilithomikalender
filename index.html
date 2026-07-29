@@ -589,17 +589,23 @@ async function loadRemote(){
     console.warn('Konnte nicht synchronisieren, nutze lokalen Stand.', e);
   }
 }
-async function saveRemote(dateKey, val){
+const pendingSaves = {}; // dateKey -> Promise-Kette, damit Anfragen für denselben Tag nicht überholen können
+function saveRemote(dateKey, val){
   if(!API_URL) return;
-  try{
-    await fetch(API_URL, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({action:'set', date: dateKey, value: val})
-    });
-  }catch(e){
-    console.warn('Sync fehlgeschlagen, lokal gespeichert.', e);
-  }
+  const previous = pendingSaves[dateKey] || Promise.resolve();
+  const current = previous.catch(()=>{}).then(async ()=>{
+    try{
+      await fetch(API_URL, {
+        method:'POST',
+        headers:{'Content-Type':'text/plain'},
+        body: JSON.stringify({action:'set', date: dateKey, value: val})
+      });
+    }catch(e){
+      console.warn('Sync fehlgeschlagen, lokal gespeichert.', e);
+    }
+  });
+  pendingSaves[dateKey] = current;
+  return current;
 }
 
 /* ============ Schulferien Kanton St. Gallen (Kindergarten) ============ */
