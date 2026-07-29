@@ -72,7 +72,9 @@ function setEntry(dateKey, value) {
   try {
     const sheet = getSheet();
     const values = sheet.getDataRange().getValues();
-    for (let i = 1; i < values.length; i++) {
+    // Von unten nach oben suchen, damit bei (bereinigten) Duplikaten dieselbe
+    // Zeile aktualisiert wird, die readAllEntries() als massgeblich ansieht.
+    for (let i = values.length - 1; i >= 1; i--) {
       const key = formatDateKey(values[i][0]);
       if (key === dateKey) {
         sheet.getRange(i + 1, 2, 1, 5).setValues([[!!value.a, !!value.b, !!value.unavailable, !!value.vacation, !!value.extra]]);
