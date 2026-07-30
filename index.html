@@ -911,45 +911,8 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch((err) => {
       console.warn('Service Worker Registrierung fehlgeschlagen:', err);
-      debugLog('SW register FEHLER: ' + err);
     });
   });
-}
-
-/* ============ Temporäre Diagnose (nur mit ?debug=1 in der URL sichtbar) ============ */
-function debugLog(msg){
-  if (new URLSearchParams(location.search).get('debug') !== '1') return;
-  let box = document.getElementById('debugBox');
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'debugBox';
-    box.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:50vh;overflow:auto;background:#000;color:#0f0;font:11px monospace;padding:8px;z-index:99999;white-space:pre-wrap;';
-    document.body.appendChild(box);
-  }
-  box.textContent += msg + '\n';
-}
-if (new URLSearchParams(location.search).get('debug') === '1') {
-  debugLog('--- Diagnose gestartet ---');
-  debugLog('User-Agent: ' + navigator.userAgent);
-  debugLog('HTTPS: ' + (location.protocol === 'https:'));
-  debugLog('serviceWorker in navigator: ' + ('serviceWorker' in navigator));
-  debugLog('manifest link vorhanden: ' + !!document.querySelector('link[rel="manifest"]'));
-  fetch('manifest.json').then(r => debugLog('manifest.json fetch status: ' + r.status)).catch(e => debugLog('manifest.json fetch FEHLER: ' + e));
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').then(reg => {
-      debugLog('SW register OK, scope: ' + reg.scope);
-      debugLog('SW state: ' + (reg.installing ? 'installing' : reg.waiting ? 'waiting' : reg.active ? 'active' : 'unbekannt'));
-    }).catch(err => debugLog('SW register FEHLER (debug): ' + err));
-  }
-  window.addEventListener('beforeinstallprompt', (e) => {
-    debugLog('beforeinstallprompt EVENT ausgelöst! Seite gilt als installierbar.');
-  });
-  window.addEventListener('appinstalled', () => debugLog('appinstalled EVENT ausgelöst!'));
-  window.addEventListener('error', (e) => debugLog('window.onerror: ' + e.message + ' @ ' + e.filename + ':' + e.lineno));
-  window.addEventListener('unhandledrejection', (e) => debugLog('unhandledrejection: ' + e.reason));
-  setTimeout(() => {
-    debugLog('--- 5s nach Laden: kein beforeinstallprompt erhalten, falls oben nichts zu dem Event steht ---');
-  }, 5000);
 }
 </script>
 </body>
