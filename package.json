@@ -1,0 +1,8 @@
+{
+  "name": "lili-thomi-kalender",
+  "private": true,
+  "description": "Statische PWA + Netlify Function fuer Push-Benachrichtigungen",
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

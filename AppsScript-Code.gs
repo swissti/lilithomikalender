@@ -15,9 +15,21 @@
  *
  * WICHTIG: Diese Version verhindert doppelte Zeilen durch eine Sperre
  * (LockService), die gleichzeitige Schreibvorgänge nacheinander abarbeitet.
+ *
+ * PUSH-BENACHRICHTIGUNGEN (optional):
+ * Damit die App das jeweils andere Handy benachrichtigen kann, wenn sich
+ * ein Eintrag ändert, braucht es zwei Script-Properties (Zahnrad-Icon links
+ * im Apps-Script-Editor > "Projekteinstellungen" > "Script-Properties"):
+ *   PUSH_RELAY_URL     = die URL deiner Netlify-Function, z.B.
+ *                        https://lilithomikalender.netlify.app/.netlify/functions/send-push
+ *   PUSH_RELAY_SECRET  = dasselbe Geheimnis, das auch als Umgebungsvariable
+ *                        PUSH_RELAY_SECRET in den Netlify-Site-Einstellungen steht
+ * Ohne diese beiden Properties funktioniert der Kalender weiterhin normal,
+ * es werden einfach keine Push-Benachrichtigungen verschickt.
  */
 
 const SHEET_NAME = "Daten";
+const SUBSCRIPTIONS_SHEET_NAME = "PushSubscriptions";
 
 function getSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -44,6 +56,17 @@ function doPost(e) {
   const body = JSON.parse(e.postData.contents);
   if (body.action === "set") {
     setEntry(body.date, body.value);
+    // Push-Benachrichtigung ans jeweils andere Handy (best effort - ein
+    // Fehler hier darf das Speichern selbst nicht verhindern).
+    try {
+      notifyOtherPerson(body.actor, body.date);
+    } catch (err) {
+      Logger.log("Push-Benachrichtigung fehlgeschlagen: " + err);
+    }
+    return jsonResponse({ ok: true });
+  }
+  if (body.action === "subscribe") {
+    saveSubscription(body.person, body.subscription);
     return jsonResponse({ ok: true });
   }
   return jsonResponse({ error: "Unbekannte Aktion" });
@@ -104,6 +127,93 @@ function formatDateKey(dateVal) {
 function jsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/* ============ Push-Benachrichtigungen ============ */
+
+function getSubscriptionsSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SUBSCRIPTIONS_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SUBSCRIPTIONS_SHEET_NAME);
+    sheet.appendRow(["Person", "Endpoint", "P256dh", "Auth", "AktualisiertAm"]);
+  }
+  return sheet;
+}
+
+// Speichert/aktualisiert eine Push-Subscription. Ein Endpoint (=eindeutig
+// pro Geraet+Browser) wird nur einmal gefuehrt; taucht er erneut auf (z.B.
+// weil sich jemand erneut angemeldet hat), wird die bestehende Zeile
+// aktualisiert statt eine neue anzulegen.
+function saveSubscription(person, subscription) {
+  if (!person || !subscription || !subscription.endpoint) return;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = getSubscriptionsSheet();
+    const values = sheet.getDataRange().getValues();
+    const keys = subscription.keys || {};
+    const row = [person, subscription.endpoint, keys.p256dh || "", keys.auth || "", new Date()];
+    for (let i = 1; i < values.length; i++) {
+      if (values[i][1] === subscription.endpoint) {
+        sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
+        return;
+      }
+    }
+    sheet.appendRow(row);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getSubscriptionsForPerson(person) {
+  const sheet = getSubscriptionsSheet();
+  const values = sheet.getDataRange().getValues();
+  const subs = [];
+  for (let i = 1; i < values.length; i++) {
+    const [rowPerson, endpoint, p256dh, auth] = values[i];
+    if (rowPerson === person && endpoint) {
+      subs.push({ endpoint: endpoint, keys: { p256dh: p256dh, auth: auth } });
+    }
+  }
+  return subs;
+}
+
+// Benachrichtigt das jeweils andere Handy, wenn jemand einen Eintrag
+// geaendert hat. "actor" ist "a" oder "b" (wer die Aenderung gemacht hat) -
+// fehlt dieser Wert (z.B. altes App-Update ohne diese Info), wird nichts
+// verschickt, da sonst nicht klar waere, wer benachrichtigt werden soll.
+function notifyOtherPerson(actor, dateKey) {
+  if (actor !== "a" && actor !== "b") return;
+  const target = actor === "a" ? "b" : "a";
+  const subs = getSubscriptionsForPerson(target);
+  if (subs.length === 0) return;
+
+  const props = PropertiesService.getScriptProperties();
+  const relayUrl = props.getProperty("PUSH_RELAY_URL");
+  const secret = props.getProperty("PUSH_RELAY_SECRET");
+  if (!relayUrl || !secret) return; // Push-Benachrichtigungen nicht eingerichtet
+
+  const payload = {
+    secret: secret,
+    subscriptions: subs,
+    title: "Lili & Thomi Kalender",
+    body: "Es gibt eine Änderung am " + formatDateGerman(dateKey) + ".",
+    url: "./"
+  };
+
+  UrlFetchApp.fetch(relayUrl, {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+}
+
+function formatDateGerman(dateKey) {
+  const parts = String(dateKey).split("-");
+  if (parts.length !== 3) return dateKey;
+  return parts[2] + "." + parts[1] + "." + parts[0];
 }
 
 /**

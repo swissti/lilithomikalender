@@ -115,7 +115,8 @@
     font-weight:600;
     margin-bottom:5px;
   }
-  .settings-field input[type="text"]{
+  .settings-field input[type="text"],
+  .settings-field select{
     width:100%;
     padding:12px 14px;
     border-radius:12px;
@@ -124,6 +125,22 @@
     font-size:15px;
     color:var(--ink);
     background:var(--paper);
+  }
+  .settings-button{
+    width:100%;
+    padding:12px 14px;
+    border-radius:12px;
+    border:1.5px solid var(--line);
+    font-family:inherit;
+    font-size:15px;
+    font-weight:600;
+    color:var(--ink);
+    background:var(--paper-raised);
+  }
+  .settings-hint{
+    margin-top:8px;
+    font-size:12.5px;
+    color:var(--ink-soft);
   }
   .settings-color-row{
     display:flex;
@@ -627,6 +644,21 @@
     <input type="color" id="inputColorVacation">
   </div>
 
+  <div class="settings-divider"></div>
+
+  <div class="settings-field">
+    <label for="inputIdentity">Wer bist du auf diesem Handy?</label>
+    <select id="inputIdentity">
+      <option value="">– auswählen –</option>
+      <option id="identityOptionA" value="a"></option>
+      <option id="identityOptionB" value="b"></option>
+    </select>
+  </div>
+  <div class="settings-field" style="margin-top:12px;">
+    <button type="button" class="settings-button" id="enableNotificationsBtn">🔔 Benachrichtigungen aktivieren</button>
+    <div class="settings-hint" id="notifStatus"></div>
+  </div>
+
   <button class="sheet-close" id="settingsClose" style="color:var(--ink);background:var(--paper);border-radius:16px;border:1.5px solid var(--line);margin-top:14px;">Speichern &amp; schliessen</button>
 </div>
 
@@ -676,7 +708,7 @@ function saveRemote(dateKey, val){
       await fetch(API_URL, {
         method:'POST',
         headers:{'Content-Type':'text/plain'},
-        body: JSON.stringify({action:'set', date: dateKey, value: val})
+        body: JSON.stringify({action:'set', date: dateKey, value: val, actor: getMyIdentity()})
       });
     }catch(e){
       console.warn('Sync fehlgeschlagen, lokal gespeichert.', e);
@@ -947,6 +979,10 @@ function openSettings(){
   document.getElementById('inputColorFrei').value = settings.colorFrei;
   document.getElementById('inputColorUnavailable').value = settings.colorUnavailable;
   document.getElementById('inputColorVacation').value = settings.colorVacation;
+  document.getElementById('identityOptionA').textContent = PERSON_A_NAME;
+  document.getElementById('identityOptionB').textContent = PERSON_B_NAME;
+  document.getElementById('inputIdentity').value = getMyIdentity();
+  updateNotifStatus();
   document.getElementById('sheetBackdrop').classList.add('open');
   document.getElementById('settingsSheet').classList.add('open');
 }
@@ -965,6 +1001,7 @@ function saveSettings(){
     colorVacation: document.getElementById('inputColorVacation').value
   };
   localStorage.setItem('huetekalender_settings', JSON.stringify(settings));
+  setMyIdentity(document.getElementById('inputIdentity').value);
   applySettings();
   renderNames();
   render();
@@ -973,6 +1010,97 @@ function saveSettings(){
 
 document.getElementById('settingsBtn').addEventListener('click', openSettings);
 document.getElementById('settingsClose').addEventListener('click', saveSettings);
+
+/* ============ Push-Benachrichtigungen ============ */
+// Öffentlicher VAPID-Schlüssel (Gegenstück zum privaten Schlüssel, der nur
+// als Umgebungsvariable in der Netlify-Function liegt). Dieser Wert ist
+// bewusst öffentlich - er identifiziert nur den Absender, erlaubt aber
+// niemandem, Nachrichten zu verschicken.
+const VAPID_PUBLIC_KEY = "BLc1UJZ_TdP6uxKhhzQ6JoouU9qnGmZ7IfU3OC0emweFzKjbXCRRjT6rmg3l4rioj-2g3qQkG_HJTdOEQ3pGWqM";
+
+function getMyIdentity(){
+  return localStorage.getItem('huetekalender_identity') || '';
+}
+function setMyIdentity(val){
+  if(val) localStorage.setItem('huetekalender_identity', val);
+  else localStorage.removeItem('huetekalender_identity');
+}
+
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+async function updateNotifStatus(){
+  const el = document.getElementById('notifStatus');
+  if(!el) return;
+  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+    el.textContent = 'Auf diesem Gerät/Browser leider nicht unterstützt.';
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    el.textContent = '⚠️ Blockiert – bitte in den Handy-/Browser-Einstellungen für diese Seite erlauben.';
+    return;
+  }
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    el.textContent = sub ? '✅ Benachrichtigungen sind auf diesem Gerät aktiv.' : 'Noch nicht aktiviert.';
+  }catch(e){
+    el.textContent = 'Noch nicht aktiviert.';
+  }
+}
+
+async function enableNotifications(){
+  const el = document.getElementById('notifStatus');
+  const identity = document.getElementById('inputIdentity').value;
+  if(!identity){
+    el.textContent = 'Bitte zuerst oben auswählen, wer du bist.';
+    return;
+  }
+  setMyIdentity(identity);
+
+  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+    el.textContent = 'Auf diesem Gerät/Browser leider nicht unterstützt.';
+    return;
+  }
+  if(!API_URL){
+    el.textContent = 'Kein Online-Speicher verbunden.';
+    return;
+  }
+
+  el.textContent = 'Wird aktiviert …';
+  try{
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      el.textContent = 'Erlaubnis nicht erteilt.';
+      return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    await fetch(API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ action:'subscribe', person: identity, subscription: sub.toJSON() })
+    });
+    el.textContent = '✅ Benachrichtigungen sind auf diesem Gerät aktiv.';
+  }catch(e){
+    console.warn('Konnte Benachrichtigungen nicht aktivieren.', e);
+    el.textContent = 'Fehler beim Aktivieren – bitte nochmal versuchen.';
+  }
+}
+
+document.getElementById('enableNotificationsBtn').addEventListener('click', enableNotifications);
 
 /* ============ Start ============ */
 (async function init(){

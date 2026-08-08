@@ -38,3 +38,37 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(event.request))
   );
 });
+
+// ============ Push-Benachrichtigungen ============
+// Zeigt eine Systembenachrichtigung, wenn der andere Elternteil einen
+// Kalender-Eintrag geändert hat (ausgelöst vom Apps-Script-Backend über
+// die Netlify-Function send-push).
+self.addEventListener('push', (event) => {
+  let data = { title: 'Lili & Thomi Kalender', body: 'Es gibt eine Änderung im Kalender.', url: './' };
+  if (event.data) {
+    try { data = { ...data, ...event.data.json() }; } catch (e) { /* Fallback auf Standardtext */ }
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      data: { url: data.url || './' }
+    })
+  );
+});
+
+// Klick auf die Benachrichtigung: vorhandenes App-Fenster fokussieren,
+// sonst neu öffnen.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || './';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
+    })
+  );
+});
