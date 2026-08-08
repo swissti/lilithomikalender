@@ -225,6 +225,40 @@ function notifyOthers(actor, dateKey) {
     muteHttpExceptions: true
   });
   Logger.log("notifyOthers: Antwort von send-push: HTTP " + response.getResponseCode() + " " + response.getContentText());
+  removeDeadSubscriptions(response.getContentText());
+}
+
+// Entfernt Subscriptions, die der Push-Dienst als nicht mehr gueltig
+// meldet (HTTP 404/410 - z.B. weil die Benachrichtigungen auf dem Handy
+// deaktiviert oder die App neu installiert wurde). Verhindert, dass sich
+// tote Eintraege im Sheet ansammeln.
+function removeDeadSubscriptions(relayResponseText) {
+  let data;
+  try {
+    data = JSON.parse(relayResponseText);
+  } catch (e) {
+    return;
+  }
+  if (!data || !Array.isArray(data.results)) return;
+  const deadEndpoints = data.results
+    .filter((r) => !r.ok && (r.statusCode === 404 || r.statusCode === 410))
+    .map((r) => r.endpoint);
+  if (deadEndpoints.length === 0) return;
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = getSubscriptionsSheet();
+    const values = sheet.getDataRange().getValues();
+    for (let i = values.length - 1; i >= 1; i--) {
+      if (deadEndpoints.indexOf(values[i][1]) !== -1) {
+        sheet.deleteRow(i + 1);
+        Logger.log("removeDeadSubscriptions: abgelaufene Subscription entfernt (Zeile " + (i + 1) + ")");
+      }
+    }
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function formatDateGerman(dateKey) {
