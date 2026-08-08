@@ -1126,6 +1126,33 @@ document.getElementById('enableNotificationsBtn').addEventListener('click', enab
   await loadRemote();
   render();
 })();
+
+/* ============ Automatisches Nachladen ============ */
+// Push-Benachrichtigungen sagen zwar Bescheid, dass sich etwas geändert
+// hat, laden die neuen Daten aber nicht selbst nach. Damit man nicht auf
+// eine Benachrichtigung angewiesen ist, wird zusätzlich neu geladen,
+// sobald man zur App zurückkehrt (z.B. Handy entsperrt/App in den
+// Vordergrund geholt) und danach in regelmässigen Abständen, solange die
+// App sichtbar im Vordergrund ist.
+let refreshInFlight = false;
+async function refreshFromServer(){
+  if (refreshInFlight) return;
+  refreshInFlight = true;
+  try{
+    await loadRemote();
+    render();
+  } finally {
+    refreshInFlight = false;
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refreshFromServer();
+});
+
+setInterval(() => {
+  if (document.visibilityState === 'visible') refreshFromServer();
+}, 60000); // alle 60 Sekunden, nur während die App sichtbar ist
 </script>
 <script>
 if ('serviceWorker' in navigator) {
