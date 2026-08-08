@@ -469,6 +469,35 @@
     color:var(--ink-soft);
     padding:0 20px 8px;
   }
+
+  /* Schmale Handy-Screens: Tagesnummer wird sonst von den Tages-Icons verdeckt */
+  @media (max-width:480px){
+    .cell .date-num{
+      font-size:12px;
+      top:3px;left:4px;
+    }
+    .kiga-badge{
+      top:3px;right:3px;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:1px;
+    }
+    .day-card .kiga-badge{
+      top:4px;right:4px;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:1px;
+    }
+    .kiga-icon{
+      height:10px;
+    }
+    .forest-icon{
+      font-size:9px;
+    }
+    .sport-icon{
+      font-size:8px;
+    }
+  }
 </style>
 </head>
 <body>
