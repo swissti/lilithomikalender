@@ -59,7 +59,7 @@ function doPost(e) {
     // Push-Benachrichtigung ans jeweils andere Handy (best effort - ein
     // Fehler hier darf das Speichern selbst nicht verhindern).
     try {
-      notifyOtherPerson(body.actor, body.date);
+      notifyOthers(body.actor, body.date);
     } catch (err) {
       Logger.log("Push-Benachrichtigung fehlgeschlagen: " + err);
     }
@@ -166,27 +166,30 @@ function saveSubscription(person, subscription) {
   }
 }
 
-function getSubscriptionsForPerson(person) {
+// Alle Subscriptions ausser die der Person, die selbst die Aenderung
+// gemacht hat (die braucht keine Benachrichtigung ueber ihre eigene Aktion).
+function getSubscriptionsExcept(actor) {
   const sheet = getSubscriptionsSheet();
   const values = sheet.getDataRange().getValues();
   const subs = [];
   for (let i = 1; i < values.length; i++) {
     const [rowPerson, endpoint, p256dh, auth] = values[i];
-    if (rowPerson === person && endpoint) {
+    if (rowPerson && rowPerson !== actor && endpoint) {
       subs.push({ endpoint: endpoint, keys: { p256dh: p256dh, auth: auth } });
     }
   }
   return subs;
 }
 
-// Benachrichtigt das jeweils andere Handy, wenn jemand einen Eintrag
-// geaendert hat. "actor" ist "a" oder "b" (wer die Aenderung gemacht hat) -
-// fehlt dieser Wert (z.B. altes App-Update ohne diese Info), wird nichts
-// verschickt, da sonst nicht klar waere, wer benachrichtigt werden soll.
-function notifyOtherPerson(actor, dateKey) {
-  if (actor !== "a" && actor !== "b") return;
-  const target = actor === "a" ? "b" : "a";
-  const subs = getSubscriptionsForPerson(target);
+// Benachrichtigt alle angemeldeten Handys ausser dem, das die Aenderung
+// selbst gemacht hat (z.B. Tilo aendert etwas -> Meli, Lili und Thomi
+// bekommen eine Benachrichtigung, sofern sie das aktiviert haben).
+// "actor" ist "a"/"b"/"c"/"d" (wer die Aenderung gemacht hat) - fehlt
+// dieser Wert (z.B. altes App-Update ohne diese Info), wird nichts
+// verschickt, da sonst nicht klar waere, wer die Aenderung gemacht hat.
+function notifyOthers(actor, dateKey) {
+  if (!actor) return;
+  const subs = getSubscriptionsExcept(actor);
   if (subs.length === 0) return;
 
   const props = PropertiesService.getScriptProperties();

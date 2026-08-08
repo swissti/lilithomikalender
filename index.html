@@ -652,6 +652,8 @@
       <option value="">– auswählen –</option>
       <option id="identityOptionA" value="a"></option>
       <option id="identityOptionB" value="b"></option>
+      <option id="identityOptionC" value="c"></option>
+      <option id="identityOptionD" value="d"></option>
     </select>
   </div>
   <div class="settings-field" style="margin-top:12px;">
@@ -674,6 +676,11 @@ const API_URL = "https://script.google.com/macros/s/AKfycbyIW17HY09K9HWGU8HbM9b_
 
 const PERSON_A_NAME = "Tilo";
 const PERSON_B_NAME = "Meli";
+// Zusaetzliche Personen, die zwar nicht beim Hueten mitgezaehlt werden
+// (kein eigener Punkt/Toggle), aber trotzdem Push-Benachrichtigungen
+// abonnieren koennen.
+const PERSON_C_NAME = "Lili";
+const PERSON_D_NAME = "Thomi";
 
 /* ============ Status ============ */
 let currentDate = new Date();
@@ -981,6 +988,8 @@ function openSettings(){
   document.getElementById('inputColorVacation').value = settings.colorVacation;
   document.getElementById('identityOptionA').textContent = PERSON_A_NAME;
   document.getElementById('identityOptionB').textContent = PERSON_B_NAME;
+  document.getElementById('identityOptionC').textContent = PERSON_C_NAME;
+  document.getElementById('identityOptionD').textContent = PERSON_D_NAME;
   document.getElementById('inputIdentity').value = getMyIdentity();
   updateNotifStatus();
   document.getElementById('sheetBackdrop').classList.add('open');
