@@ -559,18 +559,19 @@
   .quick-info-toast{
     position:fixed;
     left:50%;
-    bottom:28px;
-    transform:translate(-50%, 12px);
-    max-width:88vw;
+    top:50%;
+    transform:translate(-50%, -50%) scale(0.95);
+    max-width:82vw;
     background:var(--ink);
     color:#fff;
-    padding:12px 20px;
-    border-radius:14px;
-    font-size:14px;
+    padding:20px 26px;
+    border-radius:18px;
+    font-size:17px;
     font-weight:600;
     text-align:center;
-    line-height:1.4;
-    box-shadow:0 8px 24px rgba(0,0,0,0.28);
+    line-height:1.5;
+    white-space:pre-line;
+    box-shadow:0 14px 36px rgba(0,0,0,0.32);
     opacity:0;
     pointer-events:none;
     transition:opacity 0.2s ease, transform 0.2s ease;
@@ -578,7 +579,7 @@
   }
   .quick-info-toast.show{
     opacity:1;
-    transform:translate(-50%, 0);
+    transform:translate(-50%, -50%) scale(1);
   }
 </style>
 </head>
@@ -941,26 +942,27 @@ function quickInfoText(dateKey){
   const status = statusFor(e);
   const schoolHoliday = schoolHolidayFor(dateKey);
   const weekend = isWeekend(date);
-  const dateLabel = `${d}. ${MONTHS[m - 1]}`;
+  const prefix = sameDay(date, new Date())
+    ? 'Heute'
+    : `${dayNamesFull[(date.getDay() + 6) % 7]}, ${d}. ${MONTHS[m - 1]}`;
 
   if (status === 'vacation') {
-    return `${dateLabel} – Ferien${schoolHoliday ? ' (' + schoolHoliday + ')' : ''}`;
+    return `${prefix}: Ferien${schoolHoliday ? ' (' + schoolHoliday + ')' : ''}`;
   }
 
-  const tags = [];
+  const lines = [];
+  if (e.a) lines.push(`${PERSON_A_NAME} arbeitet`);
+  if (e.b) lines.push(`${PERSON_B_NAME} arbeitet`);
+  if (isHuete(e)) lines.push(`Kinder hüten${(e.extra && e.extraNote) ? ' (' + e.extraNote + ')' : ''}`);
+  if (e.unavailable) lines.push('Hüten nicht möglich');
   if (!schoolHoliday && !weekend) {
-    tags.push('Kindergarten');
     const wd = date.getDay();
-    if (wd === 3) tags.push('Wald');
-    if (wd === 2) tags.push('Sport');
+    const suffix = wd === 3 ? ' (Wald)' : wd === 2 ? ' (Sport)' : '';
+    lines.push(`Lia Kindergarten${suffix}`);
   }
-  if (e.unavailable) tags.push('Hüten nicht möglich');
-  if (e.extra) tags.push(e.extraNote ? `Hüten extra: ${e.extraNote}` : 'Hüten extra');
-  if (e.a) tags.push(PERSON_A_NAME);
-  if (e.b) tags.push(PERSON_B_NAME);
 
-  if (tags.length === 0) return `${dateLabel} – frei`;
-  return `${dateLabel} – ${tags.join(' · ')}`;
+  if (lines.length === 0) return `${prefix}: frei`;
+  return `${prefix}:\n${lines.join('\n')}`;
 }
 
 let quickInfoTimer = null;
@@ -969,7 +971,7 @@ function showQuickInfo(text){
   el.textContent = text;
   el.classList.add('show');
   clearTimeout(quickInfoTimer);
-  quickInfoTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  quickInfoTimer = setTimeout(() => el.classList.remove('show'), 3200);
 }
 
 function render(){
