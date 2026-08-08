@@ -601,6 +601,10 @@
     <span class="name"><span class="dot" style="background:var(--huete)"></span>Kinder hüten (extra)</span>
     <span class="switch"></span>
   </button>
+  <div class="settings-field" id="extraNoteField" style="display:none;margin:8px 0 0;">
+    <label for="extraNoteInput">Kurze Nachricht dazu (optional)</label>
+    <input type="text" id="extraNoteInput" maxlength="140" placeholder="z.B. Grund oder Uhrzeit">
+  </div>
   <div class="settings-divider"></div>
   <button class="sheet-toggle unavailable" id="toggleUnavailable">
     <span class="name"><span class="dot" style="background:var(--unavailable)"></span>Hüten nicht möglich</span>
@@ -764,7 +768,7 @@ function statusFor(dayEntry){
   return 'frei';
 }
 function entryFor(dateKey){
-  return entries[dateKey] || {a:false,b:false,unavailable:false,vacation:false,extra:false};
+  return entries[dateKey] || {a:false,b:false,unavailable:false,vacation:false,extra:false,extraNote:''};
 }
 
 function toggle(dateKey, person){
@@ -915,6 +919,9 @@ function renderSheet(){
   document.getElementById('toggleExtra').classList.toggle('on', !!e.extra);
   document.getElementById('toggleUnavailable').classList.toggle('on', !!e.unavailable);
   document.getElementById('toggleVacation').classList.toggle('on', !!e.vacation);
+
+  document.getElementById('extraNoteField').style.display = e.extra ? '' : 'none';
+  document.getElementById('extraNoteInput').value = e.extraNote || '';
 }
 
 document.getElementById('toggleA').addEventListener('click', ()=>{
@@ -931,6 +938,14 @@ document.getElementById('toggleExtra').addEventListener('click', ()=>{
   if(!sheetDateKey) return;
   toggle(sheetDateKey, 'extra');
   renderSheet();
+});
+document.getElementById('extraNoteInput').addEventListener('change', ()=>{
+  if(!sheetDateKey) return;
+  const e = entryFor(sheetDateKey);
+  e.extraNote = document.getElementById('extraNoteInput').value.trim();
+  entries[sheetDateKey] = e;
+  saveLocal();
+  saveRemote(sheetDateKey, e);
 });
 document.getElementById('toggleUnavailable').addEventListener('click', ()=>{
   if(!sheetDateKey) return;

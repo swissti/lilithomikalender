@@ -36,7 +36,7 @@ function getSheet() {
   let sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
-    sheet.appendRow(["Datum", "PersonA", "PersonB", "HuetenNichtMoeglich", "Ferien", "Extra"]);
+    sheet.appendRow(["Datum", "PersonA", "PersonB", "HuetenNichtMoeglich", "Ferien", "Extra", "ExtraNotiz"]);
   }
   // Datum-Spalte als Text formatieren, damit Google Sheets sie nicht
   // automatisch in ein Datumsformat umwandelt (verhindert Zeitzonen-Verschiebung)
@@ -80,10 +80,10 @@ function readAllEntries() {
   // Bei doppelten Zeilen gewinnt die zuletzt geschriebene (unterste) Zeile,
   // da die Schleife von oben nach unten läuft und spätere Treffer überschreiben.
   for (let i = 1; i < values.length; i++) {
-    const [dateVal, a, b, unavailable, vacation, extra] = values[i];
+    const [dateVal, a, b, unavailable, vacation, extra, extraNote] = values[i];
     if (!dateVal) continue;
     const key = formatDateKey(dateVal);
-    entries[key] = { a: !!a, b: !!b, unavailable: !!unavailable, vacation: !!vacation, extra: !!extra };
+    entries[key] = { a: !!a, b: !!b, unavailable: !!unavailable, vacation: !!vacation, extra: !!extra, extraNote: extraNote || "" };
   }
   return entries;
 }
@@ -101,14 +101,14 @@ function setEntry(dateKey, value) {
     for (let i = values.length - 1; i >= 1; i--) {
       const key = formatDateKey(values[i][0]);
       if (key === dateKey) {
-        sheet.getRange(i + 1, 2, 1, 5).setValues([[!!value.a, !!value.b, !!value.unavailable, !!value.vacation, !!value.extra]]);
+        sheet.getRange(i + 1, 2, 1, 6).setValues([[!!value.a, !!value.b, !!value.unavailable, !!value.vacation, !!value.extra, value.extraNote || ""]]);
         return;
       }
     }
     // Neue Zeile, falls Datum noch nicht existiert. Datum als Text
     // schreiben (mit vorangestelltem Apostroph), damit es nicht als
     // echtes Datum interpretiert wird.
-    sheet.appendRow([dateKey, !!value.a, !!value.b, !!value.unavailable, !!value.vacation, !!value.extra]);
+    sheet.appendRow([dateKey, !!value.a, !!value.b, !!value.unavailable, !!value.vacation, !!value.extra, value.extraNote || ""]);
     sheet.getRange(sheet.getLastRow(), 1).setNumberFormat("@").setValue(dateKey);
   } finally {
     lock.releaseLock();
