@@ -470,32 +470,35 @@
     padding:0 20px 8px;
   }
 
-  /* Handy, genug Breite: Tages-Icons nebeneinander unter der Tageszahl, in guter Groesse */
+  /* Handy, genug Breite: Tages-Icons nebeneinander oben rechts, in guter Groesse */
   @media (min-width:401px) and (max-width:480px){
     .cell .date-num{
       font-size:13px;
       top:3px;left:4px;
     }
     .kiga-badge{
-      top:17px;right:3px;
+      top:3px;right:3px;
       flex-direction:row;
       align-items:center;
-      gap:1px;
+      gap:2px;
+    }
+    .day-card{
+      padding-bottom:12px;
     }
     .day-card .kiga-badge{
-      top:23px;right:5px;
+      top:auto;bottom:4px;right:5px;
       flex-direction:row;
       align-items:center;
-      gap:1px;
+      gap:2px;
     }
     .kiga-icon{
-      height:11px;
+      height:13px;
     }
     .forest-icon{
-      font-size:10px;
+      font-size:12px;
     }
     .sport-icon{
-      font-size:9px;
+      font-size:11px;
     }
   }
   /* Schmale Handys: fuer nebeneinander reicht der Platz nicht mehr (Tageszahl
@@ -511,9 +514,12 @@
       align-items:flex-end;
       gap:1px;
     }
+    .day-card{
+      padding-bottom:18px;
+    }
     .day-card .kiga-badge{
-      top:4px;right:4px;
-      flex-direction:column;
+      top:auto;bottom:2px;right:4px;
+      flex-direction:column-reverse;
       align-items:flex-end;
       gap:1px;
     }
