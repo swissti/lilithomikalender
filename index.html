@@ -473,7 +473,7 @@
   /* Schmale Handy-Screens: Tagesnummer wird sonst von den Tages-Icons verdeckt */
   @media (max-width:480px){
     .cell .date-num{
-      font-size:12px;
+      font-size:13px;
       top:3px;left:4px;
     }
     .kiga-badge{
@@ -487,6 +487,21 @@
       flex-direction:column;
       align-items:flex-end;
       gap:1px;
+    }
+    .kiga-icon{
+      height:14px;
+    }
+    .forest-icon{
+      font-size:13px;
+    }
+    .sport-icon{
+      font-size:12px;
+    }
+  }
+  /* Sehr schmale Screens: noch etwas kompakter, damit nichts überlappt */
+  @media (max-width:340px){
+    .cell .date-num{
+      font-size:12px;
     }
     .kiga-icon{
       height:10px;
