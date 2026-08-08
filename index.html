@@ -316,6 +316,10 @@
     border:1.5px solid transparent;
     position:relative;
     overflow:hidden;
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-touch-callout:none;
+    touch-action:manipulation;
   }
   .cell.vacation{background:var(--vacation-bg);border-color:var(--vacation);border-width:2px;}
   .cell.weekend{background:var(--weekend-bg);}
@@ -550,6 +554,32 @@
       font-size:8px;
     }
   }
+
+  /* Kurzinfo-Toast (kurzer Tap auf einen Tag) */
+  .quick-info-toast{
+    position:fixed;
+    left:50%;
+    bottom:28px;
+    transform:translate(-50%, 12px);
+    max-width:88vw;
+    background:var(--ink);
+    color:#fff;
+    padding:12px 20px;
+    border-radius:14px;
+    font-size:14px;
+    font-weight:600;
+    text-align:center;
+    line-height:1.4;
+    box-shadow:0 8px 24px rgba(0,0,0,0.28);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.2s ease, transform 0.2s ease;
+    z-index:50;
+  }
+  .quick-info-toast.show{
+    opacity:1;
+    transform:translate(-50%, 0);
+  }
 </style>
 </head>
 <body>
@@ -586,6 +616,7 @@
 </main>
 
 <div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="quick-info-toast" id="quickInfoToast"></div>
 <div class="day-sheet" id="daySheet">
   <div class="sheet-date" id="sheetDate"></div>
   <div class="sheet-status" id="sheetStatus"></div>
@@ -855,9 +886,90 @@ function renderMonthGrid(){
         <span class="person-dot b ${e.b?'on':''}"></span>
       </div>`}
     `;
-    cell.addEventListener('click', ()=> openSheet(key));
+    attachCellGesture(cell, key);
     grid.appendChild(cell);
   }
+}
+
+/* ============ Kurz-Tap vs. langes Drücken ============ */
+// Kurzer Tap: kleine Kurzinfo als Toast (z.B. "Kindergarten, Wald").
+// Langes Drücken (ca. 450ms halten): öffnet wie gewohnt das Tages-Sheet
+// mit allen Einstellmöglichkeiten.
+const LONG_PRESS_MS = 450;
+const LONG_PRESS_MOVE_TOLERANCE = 10;
+
+function attachCellGesture(cell, dateKey){
+  let pressTimer = null;
+  let longPressTriggered = false;
+  let startX = 0, startY = 0;
+
+  function start(x, y){
+    longPressTriggered = false;
+    startX = x; startY = y;
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {
+      longPressTriggered = true;
+      openSheet(dateKey);
+    }, LONG_PRESS_MS);
+  }
+  function move(x, y){
+    if (Math.abs(x - startX) > LONG_PRESS_MOVE_TOLERANCE || Math.abs(y - startY) > LONG_PRESS_MOVE_TOLERANCE) {
+      clearTimeout(pressTimer);
+    }
+  }
+  function end(){
+    clearTimeout(pressTimer);
+    if (!longPressTriggered) {
+      showQuickInfo(quickInfoText(dateKey));
+    }
+  }
+  function cancel(){
+    clearTimeout(pressTimer);
+  }
+
+  cell.addEventListener('pointerdown', (ev) => start(ev.clientX, ev.clientY));
+  cell.addEventListener('pointermove', (ev) => move(ev.clientX, ev.clientY));
+  cell.addEventListener('pointerup', end);
+  cell.addEventListener('pointercancel', cancel);
+  cell.addEventListener('contextmenu', (ev) => ev.preventDefault()); // kein Kontextmenü bei langem Druck
+}
+
+function quickInfoText(dateKey){
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const e = entryFor(dateKey);
+  const status = statusFor(e);
+  const schoolHoliday = schoolHolidayFor(dateKey);
+  const weekend = isWeekend(date);
+  const dateLabel = `${d}. ${MONTHS[m - 1]}`;
+
+  if (status === 'vacation') {
+    return `${dateLabel} – Ferien${schoolHoliday ? ' (' + schoolHoliday + ')' : ''}`;
+  }
+
+  const tags = [];
+  if (!schoolHoliday && !weekend) {
+    tags.push('Kindergarten');
+    const wd = date.getDay();
+    if (wd === 3) tags.push('Wald');
+    if (wd === 2) tags.push('Sport');
+  }
+  if (e.unavailable) tags.push('Hüten nicht möglich');
+  if (e.extra) tags.push(e.extraNote ? `Hüten extra: ${e.extraNote}` : 'Hüten extra');
+  if (e.a) tags.push(PERSON_A_NAME);
+  if (e.b) tags.push(PERSON_B_NAME);
+
+  if (tags.length === 0) return `${dateLabel} – frei`;
+  return `${dateLabel} – ${tags.join(' · ')}`;
+}
+
+let quickInfoTimer = null;
+function showQuickInfo(text){
+  const el = document.getElementById('quickInfoToast');
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(quickInfoTimer);
+  quickInfoTimer = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
 function render(){
