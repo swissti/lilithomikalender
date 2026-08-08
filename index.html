@@ -470,10 +470,39 @@
     padding:0 20px 8px;
   }
 
-  /* Schmale Handy-Screens: Tagesnummer wird sonst von den Tages-Icons verdeckt */
-  @media (max-width:480px){
+  /* Handy, genug Breite: Tages-Icons nebeneinander unter der Tageszahl, in guter Groesse */
+  @media (min-width:401px) and (max-width:480px){
     .cell .date-num{
       font-size:13px;
+      top:3px;left:4px;
+    }
+    .kiga-badge{
+      top:17px;right:3px;
+      flex-direction:row;
+      align-items:center;
+      gap:1px;
+    }
+    .day-card .kiga-badge{
+      top:23px;right:5px;
+      flex-direction:row;
+      align-items:center;
+      gap:1px;
+    }
+    .kiga-icon{
+      height:11px;
+    }
+    .forest-icon{
+      font-size:10px;
+    }
+    .sport-icon{
+      font-size:9px;
+    }
+  }
+  /* Schmale Handys: fuer nebeneinander reicht der Platz nicht mehr (Tageszahl
+     bzw. Personen-Punkte wuerden verdeckt) - darum gestapelt und kompakter */
+  @media (max-width:400px){
+    .cell .date-num{
+      font-size:12px;
       top:3px;left:4px;
     }
     .kiga-badge{
@@ -487,21 +516,6 @@
       flex-direction:column;
       align-items:flex-end;
       gap:1px;
-    }
-    .kiga-icon{
-      height:14px;
-    }
-    .forest-icon{
-      font-size:13px;
-    }
-    .sport-icon{
-      font-size:12px;
-    }
-  }
-  /* Sehr schmale Screens: noch etwas kompakter, damit nichts überlappt */
-  @media (max-width:340px){
-    .cell .date-num{
-      font-size:12px;
     }
     .kiga-icon{
       height:10px;
