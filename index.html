@@ -1097,11 +1097,17 @@ async function enableNotifications(){
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       });
     }
-    await fetch(API_URL, {
+    const res = await fetch(API_URL, {
       method:'POST',
       headers:{'Content-Type':'text/plain'},
       body: JSON.stringify({ action:'subscribe', person: identity, subscription: sub.toJSON() })
     });
+    const data = await res.json().catch(()=>null);
+    if (!data || !data.ok) {
+      console.warn('Server hat die Subscription nicht bestätigt.', data);
+      el.textContent = '⚠️ Server hat nicht bestätigt – bitte nochmal versuchen.';
+      return;
+    }
     el.textContent = '✅ Benachrichtigungen sind auf diesem Gerät aktiv.';
   }catch(e){
     console.warn('Konnte Benachrichtigungen nicht aktivieren.', e);

@@ -66,7 +66,8 @@ function doPost(e) {
     return jsonResponse({ ok: true });
   }
   if (body.action === "subscribe") {
-    saveSubscription(body.person, body.subscription);
+    const saved = saveSubscription(body.person, body.subscription);
+    if (!saved) return jsonResponse({ ok: false, error: "Ungueltige Subscription-Daten" });
     return jsonResponse({ ok: true });
   }
   return jsonResponse({ error: "Unbekannte Aktion" });
@@ -146,7 +147,10 @@ function getSubscriptionsSheet() {
 // weil sich jemand erneut angemeldet hat), wird die bestehende Zeile
 // aktualisiert statt eine neue anzulegen.
 function saveSubscription(person, subscription) {
-  if (!person || !subscription || !subscription.endpoint) return;
+  if (!person || !subscription || !subscription.endpoint) {
+    Logger.log("saveSubscription: ungueltige Daten - person=" + person + " subscription=" + JSON.stringify(subscription));
+    return false;
+  }
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
@@ -157,10 +161,13 @@ function saveSubscription(person, subscription) {
     for (let i = 1; i < values.length; i++) {
       if (values[i][1] === subscription.endpoint) {
         sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-        return;
+        Logger.log("saveSubscription: bestehende Subscription fuer '" + person + "' aktualisiert (Zeile " + (i + 1) + ")");
+        return true;
       }
     }
     sheet.appendRow(row);
+    Logger.log("saveSubscription: neue Subscription fuer '" + person + "' gespeichert");
+    return true;
   } finally {
     lock.releaseLock();
   }
@@ -188,13 +195,19 @@ function getSubscriptionsExcept(actor) {
 // dieser Wert (z.B. altes App-Update ohne diese Info), wird nichts
 // verschickt, da sonst nicht klar waere, wer die Aenderung gemacht hat.
 function notifyOthers(actor, dateKey) {
-  if (!actor) return;
+  Logger.log("notifyOthers: actor=" + actor + " dateKey=" + dateKey);
+  if (!actor) {
+    Logger.log("notifyOthers: kein actor mitgeschickt -> abgebrochen");
+    return;
+  }
   const subs = getSubscriptionsExcept(actor);
+  Logger.log("notifyOthers: " + subs.length + " Empfaenger-Subscription(en) gefunden (alle ausser '" + actor + "')");
   if (subs.length === 0) return;
 
   const props = PropertiesService.getScriptProperties();
   const relayUrl = props.getProperty("PUSH_RELAY_URL");
   const secret = props.getProperty("PUSH_RELAY_SECRET");
+  Logger.log("notifyOthers: PUSH_RELAY_URL gesetzt=" + !!relayUrl + " PUSH_RELAY_SECRET gesetzt=" + !!secret);
   if (!relayUrl || !secret) return; // Push-Benachrichtigungen nicht eingerichtet
 
   const payload = {
@@ -205,12 +218,13 @@ function notifyOthers(actor, dateKey) {
     url: "./"
   };
 
-  UrlFetchApp.fetch(relayUrl, {
+  const response = UrlFetchApp.fetch(relayUrl, {
     method: "post",
     contentType: "application/json",
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   });
+  Logger.log("notifyOthers: Antwort von send-push: HTTP " + response.getResponseCode() + " " + response.getContentText());
 }
 
 function formatDateGerman(dateKey) {
