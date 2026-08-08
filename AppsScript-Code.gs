@@ -234,6 +234,38 @@ function formatDateGerman(dateKey) {
 }
 
 /**
+ * ZUM TESTEN VON HAND AUSFÜHREN (nicht über die App, sondern hier im
+ * Editor): Oben in der Funktionsliste "testPushNotification" auswählen
+ * und auf "Ausführen" (▷) klicken. Danach erscheint unten automatisch
+ * das Ausführungsprotokoll mit allen Logger.log-Zeilen - kein Klicken
+ * in der Ausführungen-Liste nötig.
+ *
+ * Zeigt zuerst alle gespeicherten Push-Subscriptions (damit man sieht,
+ * ob "Benachrichtigungen aktivieren" auf den Handys überhaupt etwas
+ * gespeichert hat) und schickt danach testweise eine echte
+ * Benachrichtigung an alle ausser der ersten gespeicherten Person.
+ */
+function testPushNotification() {
+  const sheet = getSubscriptionsSheet();
+  const values = sheet.getDataRange().getValues();
+  Logger.log("=== Gespeicherte Push-Subscriptions (" + (values.length - 1) + ") ===");
+  for (let i = 1; i < values.length; i++) {
+    const [person, endpoint] = values[i];
+    if (!endpoint) continue;
+    Logger.log(i + ": Person='" + person + "' Endpoint='" + String(endpoint).slice(0, 70) + "...'");
+  }
+  if (values.length <= 1) {
+    Logger.log("=> KEINE Subscriptions gefunden. Das heisst: 'Benachrichtigungen aktivieren' hat bisher auf keinem Handy erfolgreich beim Server gespeichert.");
+    return;
+  }
+
+  const testActor = values[1][0];
+  Logger.log("=== Teste notifyOthers mit actor='" + testActor + "' (so als haette diese Person etwas geaendert) ===");
+  notifyOthers(testActor, formatDateKey(new Date()));
+  Logger.log("=== Test fertig - HTTP-Antwort siehe Zeile 'Antwort von send-push' oben ===");
+}
+
+/**
  * EINMALIG AUSFÜHREN, um bestehende Duplikate im Sheet zu bereinigen.
  * Im Apps-Script-Editor oben in der Funktionsliste "cleanupDuplicates"
  * auswählen und auf "Ausführen" klicken.
