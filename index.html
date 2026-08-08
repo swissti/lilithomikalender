@@ -711,9 +711,11 @@ async function loadRemote(){
   }
 }
 const pendingSaves = {}; // dateKey -> Promise-Kette, damit Anfragen für denselben Tag nicht überholen können
+let pendingSaveCount = 0; // >0 solange irgendein Speichern noch unterwegs ist (siehe refreshFromServer)
 function saveRemote(dateKey, val){
   if(!API_URL) return;
   const previous = pendingSaves[dateKey] || Promise.resolve();
+  pendingSaveCount++;
   const current = previous.catch(()=>{}).then(async ()=>{
     try{
       await fetch(API_URL, {
@@ -723,6 +725,8 @@ function saveRemote(dateKey, val){
       });
     }catch(e){
       console.warn('Sync fehlgeschlagen, lokal gespeichert.', e);
+    }finally{
+      pendingSaveCount--;
     }
   });
   pendingSaves[dateKey] = current;
@@ -1152,6 +1156,13 @@ document.getElementById('enableNotificationsBtn').addEventListener('click', enab
 let refreshInFlight = false;
 async function refreshFromServer(){
   if (refreshInFlight) return;
+  // Nicht nachladen, während gerade etwas gespeichert wird oder ein
+  // Tages-/Einstellungs-Sheet offen ist - sonst kann der noch nicht
+  // eingetroffene Server-Stand gerade eingegebene Aenderungen (z.B. eine
+  // Notiz) wieder überschreiben, bevor sie überhaupt angekommen sind.
+  if (pendingSaveCount > 0) return;
+  if (sheetDateKey) return;
+  if (document.getElementById('settingsSheet').classList.contains('open')) return;
   refreshInFlight = true;
   try{
     await loadRemote();
